@@ -1,13 +1,13 @@
-use dirs::home_dir;
-use serde_json::from_str;
-use std::path::PathBuf;
+use std::fmt;
 use std::fs::read_to_string;
+use std::path::PathBuf;
+use std::collections::BTreeMap;
+use dirs::home_dir;
+use serde::{Serialize, Deserialize};
+use serde_json::from_str;
 
 use crate::errors::{Error, into_write_error};
 use crate::{STORAGE_FILE, STORAGE_DIRECTORY};
-
-use serde::{Serialize, Deserialize};
-use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Feature {
@@ -18,6 +18,12 @@ pub struct Feature {
     usage_percent_y: Option<u8>,
     usage_percent_a: Option<u8>,
     ucprefix: bool,
+}
+
+impl fmt::Display for Feature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}\n{}", self.title, self.description)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

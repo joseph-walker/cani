@@ -1,15 +1,16 @@
 #![allow(dead_code)]
 
-mod subcommands;
-mod errors;
 mod data;
+mod errors;
+mod subcommands;
 
-use std::process;
 use clap::{Parser, Subcommand};
+use std::process;
 
 use crate::errors::Error;
-use crate::subcommands::sync::sync;
 use crate::subcommands::ls::ls;
+use crate::subcommands::sync::sync;
+use crate::subcommands::r#use::r#use;
 
 const STORAGE_DIRECTORY: &str = ".cani";
 const STORAGE_FILE: &str = "caniuse.json";
@@ -17,13 +18,19 @@ const STORAGE_FILE: &str = "caniuse.json";
 #[derive(Parser, Debug)]
 struct Cli {
     #[command(subcommand)]
-    subcommand: Cmds
+    subcommand: Cmds,
+}
+
+#[derive(Parser, Debug)]
+struct UseArgs {
+    feature: String,
 }
 
 #[derive(Subcommand, Debug)]
 enum Cmds {
     Sync,
-    Ls
+    Ls,
+    Use(UseArgs),
 }
 
 fn main() {
@@ -31,7 +38,8 @@ fn main() {
 
     let command_result = match cli.subcommand {
         Cmds::Sync => sync(),
-        Cmds::Ls => ls()
+        Cmds::Ls => ls(),
+        Cmds::Use(use_args) => r#use(use_args.feature),
     };
 
     match command_result {
