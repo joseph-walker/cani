@@ -1,13 +1,23 @@
-use std::fmt;
-use std::fs::read_to_string;
-use std::path::PathBuf;
-use std::collections::BTreeMap;
 use dirs::home_dir;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::from_str;
+use std::collections::BTreeMap;
+use std::fs::read_to_string;
+use std::io::Write;
+use std::path::PathBuf;
+use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
-use crate::errors::{Error, into_write_error};
-use crate::{STORAGE_FILE, STORAGE_DIRECTORY};
+use crate::errors::{into_write_error, Error};
+use crate::{STORAGE_DIRECTORY, STORAGE_FILE};
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FeatureLink {
+    url: String,
+    title: String,
+}
+
+type BrowserStats = BTreeMap<String, String>;
+type FeatureStats = BTreeMap<String, BrowserStats>;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Feature {
@@ -15,20 +25,71 @@ pub struct Feature {
     description: String,
     spec: String,
     status: String,
-    usage_percent_y: Option<u8>,
-    usage_percent_a: Option<u8>,
+    links: Vec<FeatureLink>,
+    categories: Vec<String>,
+    stats: FeatureStats,
+    notes: String,
+    notes_by_num: BTreeMap<String, String>,
+    usage_perc_y: f32,
+    usage_perc_a: f32,
     ucprefix: bool,
+    parent: String,
+    keywords: String,
 }
 
-impl fmt::Display for Feature {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}\n{}", self.title, self.description)
-    }
+pub fn print_feature(feature: &Feature) -> Result<(), std::io::Error> {
+    let stdout_writer = BufferWriter::stdout(ColorChoice::Always);
+    let mut buffer = stdout_writer.buffer();
+
+    let mut green = ColorSpec::new();
+    green.set_fg(Some(Color::Green));
+
+    let mut yellow = ColorSpec::new();
+    yellow.set_fg(Some(Color::Yellow));
+
+    // Title
+    writeln!(&mut buffer, "{}", feature.title)?;
+    writeln!(&mut buffer, "{}", feature.spec)?;
+
+    // Usage percentage
+    buffer.set_color(&green)?;
+    write!(&mut buffer, "{}%", feature.usage_perc_y)?;
+    buffer.reset()?;
+
+    write!(&mut buffer, " + ")?;
+
+    buffer.set_color(&yellow)?;
+    write!(&mut buffer, "{}%", feature.usage_perc_a)?;
+    buffer.reset()?;
+
+    let sum_percent = feature.usage_perc_y + feature.usage_perc_a;
+
+    write!(&mut buffer, " = {}%\n", sum_percent)?;
+
+    // Description
+    writeln!(&mut buffer)?;
+    writeln!(&mut buffer, "{}", feature.description)?;
+    writeln!(&mut buffer)?;
+
+    stdout_writer.print(&buffer)?;
+
+    Ok(())
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Browser {
+    browser: String,
+    long_name: String,
+    abbr: String,
+    prefix: String,
+    r#type: String,
+    usage_global: BTreeMap<String, f64>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CanIUse {
     pub data: BTreeMap<String, Feature>,
+    pub agents: BTreeMap<String, Browser>,
 }
 
 pub fn read_datafile() -> Result<CanIUse, Error> {
