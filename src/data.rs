@@ -10,18 +10,34 @@ use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 use crate::errors::{into_write_error, Error};
 use crate::{STORAGE_DIRECTORY, STORAGE_FILE};
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct FeatureLink {
-    url: String,
-    title: String,
+macro_rules! color_write {
+    ($buf:expr, $color:expr, $($args:tt)*) => {{
+        $buf.set_color($color)?;
+        write!($buf, $($args)*)?;
+        $buf.reset()?;
+    }};
+}
+
+macro_rules! color_writeln {
+    ($buf:expr, $color:expr, $($args:tt)*) => {{
+        $buf.set_color($color)?;
+        writeln!($buf, $($args)*)?;
+        $buf.reset()?;
+    }};
 }
 
 type BrowserStats = BTreeMap<String, String>;
 type FeatureStats = BTreeMap<String, BrowserStats>;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Feature {
+pub struct FeatureLink {
+    url: String,
     title: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Feature {
+    pub title: String,
     description: String,
     spec: String,
     status: String,
@@ -35,45 +51,6 @@ pub struct Feature {
     ucprefix: bool,
     parent: String,
     keywords: String,
-}
-
-pub fn print_feature(feature: &Feature) -> Result<(), std::io::Error> {
-    let stdout_writer = BufferWriter::stdout(ColorChoice::Always);
-    let mut buffer = stdout_writer.buffer();
-
-    let mut green = ColorSpec::new();
-    green.set_fg(Some(Color::Green));
-
-    let mut yellow = ColorSpec::new();
-    yellow.set_fg(Some(Color::Yellow));
-
-    // Title
-    writeln!(&mut buffer, "{}", feature.title)?;
-    writeln!(&mut buffer, "{}", feature.spec)?;
-
-    // Usage percentage
-    buffer.set_color(&green)?;
-    write!(&mut buffer, "{}%", feature.usage_perc_y)?;
-    buffer.reset()?;
-
-    write!(&mut buffer, " + ")?;
-
-    buffer.set_color(&yellow)?;
-    write!(&mut buffer, "{}%", feature.usage_perc_a)?;
-    buffer.reset()?;
-
-    let sum_percent = feature.usage_perc_y + feature.usage_perc_a;
-
-    write!(&mut buffer, " = {}%\n", sum_percent)?;
-
-    // Description
-    writeln!(&mut buffer)?;
-    writeln!(&mut buffer, "{}", feature.description)?;
-    writeln!(&mut buffer)?;
-
-    stdout_writer.print(&buffer)?;
-
-    Ok(())
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -107,4 +84,52 @@ pub fn read_datafile() -> Result<CanIUse, Error> {
     } else {
         Err(Error::ReadError)
     }
+}
+
+pub fn print_feature(feature: &Feature) -> Result<(), std::io::Error> {
+    let stdout_writer = BufferWriter::stdout(ColorChoice::Always);
+    let mut buffer = stdout_writer.buffer();
+
+    let mut green = ColorSpec::new();
+    green.set_fg(Some(Color::Green));
+
+    let mut yellow = ColorSpec::new();
+    yellow.set_fg(Some(Color::Yellow));
+
+    let buf = &mut buffer;
+
+    // Title
+    write!(buf, "Feature: ")?;
+    writeln!(buf, "{}", feature.title)?;
+
+    // Spec
+    write!(buf, "Spec: ")?;
+    writeln!(buf, "{}", feature.spec)?;
+
+    // Usage percentage
+    write!(buf, "Global Support: ")?;
+    color_write!(buf, &green, "{}%", feature.usage_perc_y);
+    write!(buf, " + ")?;
+    color_write!(buf, &yellow, "{}%", feature.usage_perc_a);
+
+    let sum_percent = feature.usage_perc_y + feature.usage_perc_a;
+
+    write!(buf, " = {}%\n", sum_percent)?;
+
+    // Usgae percentage key
+    write!(buf, " - ")?;
+    color_write!(buf, &green, "Full");
+    writeln!(buf, " support")?;
+    write!(buf, " - ")?;
+    color_write!(buf, &yellow, "Partial");
+    writeln!(buf, " support")?;
+
+    // Description
+    writeln!(buf)?;
+    writeln!(buf, "{}", feature.description)?;
+    writeln!(buf)?;
+
+    stdout_writer.print(&buffer)?;
+
+    Ok(())
 }

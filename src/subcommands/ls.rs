@@ -4,7 +4,10 @@ pub fn ls() -> Result<(), Error> {
     let caniuse = read_datafile()?;
 
     for k in caniuse.data.keys() {
-        println!("{}", k);
+        let feature = caniuse.data.get(k).unwrap();
+        let title = &feature.title;
+
+        println!("{}: {}", k, title);
     }
 
     Ok(())
