@@ -16,7 +16,7 @@ jobs:
         with:
           path: |
             ~/.cargo/registry
-            .target
+            ./target
           key: test-cargo-registry
       - name: Run Tests
         run: cargo test --verbose
@@ -55,4 +55,22 @@ jobs:
       - name: Rustup
         run: rustup target add $TARGET
       - name: Build
-        run: cargo build --release --verbose --target $TARGET
+        run: cargo build --release --target $TARGET
+      - name: List Target
+        run: find ./target
+      - name: Compress
+        run: |
+          mkdir -p ./artifacts
+          if [[ $GITHUB_REF_TYPE =~ ^tag$ ]]; then
+            TAG=$GITHUB_REF_NAME
+          else
+            TAG=$GITHUB_SHA
+          fi
+          mv ./target/$TARGET/release/$EXEC ./$EXEC
+          tar -czf ./artifacts/$NAME-$TARGET-$TAG.tar.gz $NAME
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: result
+          path: |
+            ./artifacts
