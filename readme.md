@@ -1,5 +1,7 @@
 # CanIUse
 
+[![CI](https://github.com/joseph-walker/cani/actions/workflows/ci.yml/badge.svg)](https://github.com/joseph-walker/cani/actions/workflows/ci.yml)
+
 A command line tool for accessing CanIUse data offline and in your terminal
 
 ## Installation
