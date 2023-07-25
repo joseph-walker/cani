@@ -33,5 +33,5 @@ By default, the mirrored CanIUse data will be stored in your home directory, at 
 For example, integration with `fzf` might look like:
 
 ```bash
-cani ls | fzf -d : --preview \"cani use {1}\" --preview-window right:75%:wrap
+cani ls | fzf -d : --preview "cani use {1}" --preview-window right:75%:wrap
 ```
