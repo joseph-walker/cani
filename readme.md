@@ -4,7 +4,7 @@ A command line tool for accessing CanIUse data offline and in your terminal
 
 ## Installation
 
-_Instructions coming soon
+_Instructions coming soon_
 
 ## Build + Dev
 
@@ -23,6 +23,8 @@ cargo run sync
 2) Run `cani sync` to download a mirror of the CanIUse data
 3) Run `cani ls` to see all the features available
 4) Run `cani use <feature_key>` to see CanIUse data
+
+By default, the mirrored CanIUse data will be stored in your home directory, at `~/.cani/caniuse.json`.
 
 ## Advanced Usage
 
