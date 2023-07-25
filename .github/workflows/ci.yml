@@ -7,9 +7,16 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test:
+  Test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Cargo Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            .target
+          key: test-cargo-registry
       - name: Run Tests
         run: cargo test --verbose
