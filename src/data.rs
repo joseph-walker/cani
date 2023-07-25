@@ -1,6 +1,7 @@
 use dirs::home_dir;
 use serde::{Deserialize, Serialize};
 use serde_json::from_str;
+use std::fmt;
 use std::collections::BTreeMap;
 use std::fs::read_to_string;
 use std::io::Write;
@@ -14,14 +15,6 @@ macro_rules! color_write {
     ($buf:expr, $color:expr, $($args:tt)*) => {{
         $buf.set_color($color)?;
         write!($buf, $($args)*)?;
-        $buf.reset()?;
-    }};
-}
-
-macro_rules! color_writeln {
-    ($buf:expr, $color:expr, $($args:tt)*) => {{
-        $buf.set_color($color)?;
-        writeln!($buf, $($args)*)?;
         $buf.reset()?;
     }};
 }
@@ -61,12 +54,30 @@ pub struct Browser {
     prefix: String,
     r#type: String,
     usage_global: BTreeMap<String, f64>,
+    versions: Vec<Option<String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CanIUse {
     pub data: BTreeMap<String, Feature>,
     pub agents: BTreeMap<String, Browser>,
+}
+
+#[derive(Debug)]
+struct VersionGridCell<'ver> {
+    start: &'ver String,
+    stop: Option<&'ver String>,
+    support: &'ver String,
+}
+
+impl <'ver>fmt::Display for VersionGridCell<'ver> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(stop) = self.stop {
+            write!(f, "{} → {} = {}", self.start, stop, self.support)
+        } else {
+            write!(f, "{} = {}", self.start, self.support)
+        }
+    }
 }
 
 pub fn read_datafile() -> Result<CanIUse, Error> {
@@ -86,7 +97,7 @@ pub fn read_datafile() -> Result<CanIUse, Error> {
     }
 }
 
-pub fn print_feature(feature: &Feature) -> Result<(), std::io::Error> {
+pub fn print_feature(caniuse: &CanIUse, feature: &Feature) -> Result<(), std::io::Error> {
     let stdout_writer = BufferWriter::stdout(ColorChoice::Always);
     let mut buffer = stdout_writer.buffer();
 
@@ -95,6 +106,9 @@ pub fn print_feature(feature: &Feature) -> Result<(), std::io::Error> {
 
     let mut yellow = ColorSpec::new();
     yellow.set_fg(Some(Color::Yellow));
+
+    let mut red = ColorSpec::new();
+    red.set_fg(Some(Color::Red));
 
     let buf = &mut buffer;
 
@@ -128,6 +142,49 @@ pub fn print_feature(feature: &Feature) -> Result<(), std::io::Error> {
     writeln!(buf)?;
     writeln!(buf, "{}", feature.description)?;
     writeln!(buf)?;
+
+    // Browsers
+    for (browser_name, browser_stats) in &feature.stats {
+        let browser_versions = &caniuse.agents.get(browser_name).unwrap().versions;
+
+        let mut version_grid: Vec<VersionGridCell> = vec![];
+
+        // Use browser_versions to sort browser_stats into a sorted vector
+        for version in browser_versions.iter() {
+            // Get the version entry. It may be null; if so, continue to the next one
+            if let Some(version) = version {
+                // If it's a value, get the stat for this browser version
+                let stat = browser_stats.get(version).unwrap();
+
+                // Check the last grid cell
+                if let Some(version_grid_cell) = version_grid.last_mut() {
+                    // If the stat is the same value, update it
+                    if version_grid_cell.support == stat {
+                        version_grid_cell.stop = Some(version);
+                        continue;
+                    }
+                }
+
+                version_grid.push(VersionGridCell {
+                    start: version,
+                    stop: None,
+                    support: stat,
+                })
+            } else {
+                continue;
+            }
+        }
+
+        let browser_name = &caniuse.agents.get(browser_name).unwrap().browser;
+
+        writeln!(buf, "{browser_name}")?;
+
+        for cell in version_grid.iter() {
+            writeln!(buf, "{cell}")?;
+        }
+
+        writeln!(buf)?;
+    }
 
     stdout_writer.print(&buffer)?;
 
