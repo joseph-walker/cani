@@ -20,3 +20,39 @@ jobs:
           key: test-cargo-registry
       - name: Run Tests
         run: cargo test --verbose
+
+  Build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - TARGET: x86_64-unknown-linux-gnu
+            OS: ubuntu-latest
+          - TARGET: aarch64-apple-darwin
+            OS: macos-latest
+    needs: Test
+    runs-on: ${{ matrix.os }}
+    env:
+      NAME: cani
+      TARGET: ${{ matrix.TARGET }}
+      OS: ${{ matrix.OS }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cargo Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ./target
+          key: build-cargo-registry-${{ matrix.target }}
+      - name: Install Dependencies
+        run: |
+          # Configure Linux linker
+          cat >>~/.cargo/config <<EOF
+          [target.aarch64-unknown-linux-gnu]
+          linker = "aarch64-linux-gnu-gcc"
+          EOF
+      - name: Rustup
+        run: rustup target add $TARGET
+      - name: Build
+        run: cargo build --release --verbose --target $TARGET
