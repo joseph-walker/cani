@@ -1,5 +1,6 @@
 name: CI
-permissions: write
+permissions: 
+  contents: write
 on:
   push:
 env:
